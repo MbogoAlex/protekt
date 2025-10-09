@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 import java.sql.Timestamp;
 import java.util.List;
@@ -11,6 +12,7 @@ import java.util.List;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
+@SuperBuilder
 @Entity
 @Table(name = "protekt_customer_verifications")
 public class CustomerVerification {
@@ -30,7 +32,7 @@ public class CustomerVerification {
     private String verificationNotes;
 
     @Column(name = "verification_status")
-    private String verificationStatus; // PENDING, IN_REVIEW, ON_HOLD, REJECTED, FLAGGED, VERIFIED
+    private String verificationStatus; // PENDING, SUBMITTED, IN_REVIEW, ON_HOLD, REJECTED, FLAGGED, VERIFIED
 
     @Column(name = "created_at")
     private Timestamp createdAt;

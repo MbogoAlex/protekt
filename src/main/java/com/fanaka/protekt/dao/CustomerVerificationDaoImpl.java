@@ -32,7 +32,7 @@ public class CustomerVerificationDaoImpl implements CustomerVerificationDao{
     }
 
     @Override
-    public CustomerVerification updateCustomer(CustomerVerification customerVerification) {
+    public CustomerVerification updateCustomerVerification(CustomerVerification customerVerification) {
         entityManager.merge(customerVerification);
         return customerVerification;
     }

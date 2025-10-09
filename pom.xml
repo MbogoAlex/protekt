@@ -54,6 +54,22 @@
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+		
+		<!-- AWS SDK for Java v2 -->
+		<dependency>
+			<groupId>software.amazon.awssdk</groupId>
+			<artifactId>s3</artifactId>
+			<version>2.32.15</version>
+			<scope>compile</scope>
+		</dependency>
+		
+		<!-- AWS SDK v2 URL Connection Client (for better performance) -->
+		<dependency>
+			<groupId>software.amazon.awssdk</groupId>
+			<artifactId>url-connection-client</artifactId>
+			<version>2.32.14</version>
+			<scope>compile</scope>
+		</dependency>
 	</dependencies>
 
 	<build>

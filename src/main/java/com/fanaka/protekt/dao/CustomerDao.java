@@ -9,5 +9,6 @@ public interface CustomerDao {
     Customer createCustomer(Customer customer);
     Customer updateCustomer(Customer customer);
     Customer getCustomerById(Long id);
+    Customer getCustomerByMemberId(Long memberId);
     Page<Customer> filterCustomers(String name, String nrc, String email, String gender, String verificationStatus, LocalDateTime createdAtStartDate, LocalDateTime createdAtEndDate, Integer page, Integer pageSize);
 }

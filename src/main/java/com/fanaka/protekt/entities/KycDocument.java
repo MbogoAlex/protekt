@@ -40,7 +40,7 @@ public class KycDocument {
     @Column(name = "updated_at")
     private Timestamp updatedAt;
 
-    @ManyToOne
+    @OneToOne
     @JoinColumn(name = "protekt_file_id")
     private ProtektFile protektFile;
 }

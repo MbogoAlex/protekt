@@ -21,7 +21,7 @@ public class Customer {
     private Long id;
 
     @OneToOne
-    @JoinColumn(name = "member_id")
+    @JoinColumn(name = "member_id", unique = true)
     private Member member;
 
     @OneToOne

@@ -49,6 +49,17 @@ public class CustomerDaoImpl implements CustomerDao {
     }
 
     @Override
+    public Customer getCustomerByMemberId(Long memberId) {
+        try {
+            TypedQuery<Customer> query = entityManager.createQuery("from Customer where member.id = :memberId", Customer.class);
+            query.setParameter("memberId", memberId);
+            return query.getSingleResult();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    @Override
     public Page<Customer> filterCustomers(String name, String nrc, String email, String gender, String verificationStatus, LocalDateTime createdAtStartDate, LocalDateTime createdAtEndDate, Integer page, Integer pageSize) {
         CriteriaBuilder cb = entityManager.getCriteriaBuilder();
         CriteriaQuery<Customer> query = cb.createQuery(Customer.class);
