@@ -6,6 +6,9 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
+import java.sql.Timestamp;
+import java.util.List;
+
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -20,6 +23,7 @@ public class Product {
 
     private String provider;
 
+    @Column(name = "provider_product_id")
     private String providerProductId;
 
     private String name;
@@ -32,5 +36,14 @@ public class Product {
     private Integer policyDuration;
 
     private String policyDurationType; // DAYS, WEEKS, MONTHS, YEARS
+
+    @OneToMany(mappedBy = "product")
+    private List<ProductTerm> productTerms;
+
+    @Column(name = "created_at")
+    private Timestamp createdAt;
+
+    @Column(name = "updated_at")
+    private Timestamp updatedAt;
 
 }

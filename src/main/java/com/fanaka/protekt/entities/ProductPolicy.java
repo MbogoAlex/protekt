@@ -19,7 +19,7 @@ public class ProductPolicy {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+    private Long id;
 
     @ManyToOne
     @JoinColumn(name = "protekt_product_id")
@@ -28,6 +28,20 @@ public class ProductPolicy {
     @ManyToOne
     @JoinColumn(name = "customer_id")
     private Customer customer;
+
+    @Column(name = "loan_amount")
+    private String loanAmount;
+
+    private String asset; // asset being insured
+
+    @Column(name = "asset_value")
+    private String assetValue;
+
+    @Column(name = "premium_percentage")
+    private String premiumPercentage;
+
+    @Column(name = "premium_value")
+    private String premiumValue;
 
     @Column(name = "created_at")
     private Timestamp createdAt;
@@ -42,6 +56,6 @@ public class ProductPolicy {
     private LocalDateTime policyEndDate;
 
     @OneToOne
-    @JoinColumn(name = "loan_id")
-    private Loan loan;
+    @JoinColumn(name = "loan_contract_id")
+    private LoanContract loanContract;
 }
