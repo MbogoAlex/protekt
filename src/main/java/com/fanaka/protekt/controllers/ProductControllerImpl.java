@@ -12,7 +12,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/products/")
+@RequestMapping("/api/v1/products")
 public class ProductControllerImpl implements ProductController{
 
     private final BuildResponse buildResponse;
@@ -70,7 +70,7 @@ public class ProductControllerImpl implements ProductController{
         }
     }
 
-    @GetMapping
+    @GetMapping("/")
     @Override
     public ResponseEntity<Object> filterProducts(
             @RequestParam(required = false) String provider,
