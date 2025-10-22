@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @AllArgsConstructor
@@ -21,9 +22,11 @@ public class ProductPolicyDto {
     private Long customerId;
     private String customerName;
     private Long loanId;
-    private String loanAmount;
+    private String loanPrincipal;
+    private String loanDisbursed;
     private String premiumPercentage;
     private String premiumValue;
+    private List<PremiumCalculationDto> premiumCalculations;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime policyStartDate;

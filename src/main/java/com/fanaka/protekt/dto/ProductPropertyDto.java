@@ -8,26 +8,18 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @SuperBuilder
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-public class ProductDto {
-    private Integer id;
-    private String provider;
-    private Integer providerId;
-    private String providerProductId;
-    private String name;
-    private String description;
-    private String productBeneficiaryType;
-    private Integer policyDuration;
-    private String policyDurationType;
-    private String premiumCalculationMethod;
-    private Boolean requiresComplexCalculation;
-    private List<ProductTermDto> productTerms;
+public class ProductPropertyDto {
+    private Long id;
+    private String key;
+    private String value;
+    private String valueType;
+    private Integer productId;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

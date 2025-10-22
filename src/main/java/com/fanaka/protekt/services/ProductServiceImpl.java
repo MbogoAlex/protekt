@@ -5,6 +5,8 @@ import com.fanaka.protekt.dao.LoanContractDao;
 import com.fanaka.protekt.dao.ProductDao;
 import com.fanaka.protekt.dto.*;
 import com.fanaka.protekt.dto.mapper.ProductMapper;
+import com.fanaka.protekt.dto.mapper.ProviderMapper;
+import com.fanaka.protekt.dto.mapper.PremiumCalculationMapper;
 import com.fanaka.protekt.entities.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -14,6 +16,7 @@ import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class ProductServiceImpl implements ProductService{
@@ -22,18 +25,27 @@ public class ProductServiceImpl implements ProductService{
     private final CustomerDao customerDao;
     private final LoanContractDao loanContractDao;
     private final ProductMapper productMapper;
+    private final ProviderMapper providerMapper;
+    private final PremiumCalculationMapper premiumCalculationMapper;
+    private final PremiumCalculationHelper premiumCalculationHelper;
 
     @Autowired
     public ProductServiceImpl(
             ProductDao productDao,
             CustomerDao customerDao,
             LoanContractDao loanContractDao,
-            ProductMapper productMapper
+            ProductMapper productMapper,
+            ProviderMapper providerMapper,
+            PremiumCalculationMapper premiumCalculationMapper,
+            PremiumCalculationHelper premiumCalculationHelper
     ) {
         this.productDao = productDao;
         this.customerDao = customerDao;
         this.loanContractDao = loanContractDao;
         this.productMapper = productMapper;
+        this.providerMapper = providerMapper;
+        this.premiumCalculationMapper = premiumCalculationMapper;
+        this.premiumCalculationHelper = premiumCalculationHelper;
     }
 
     @Transactional
@@ -43,14 +55,26 @@ public class ProductServiceImpl implements ProductService{
         try {
             LocalDateTime now = LocalDateTime.now();
 
+            // Get provider entity if providerId is provided
+            Provider providerEntity = null;
+            if (productCreationDto.getProviderId() != null) {
+                providerEntity = productDao.getProviderById(Long.valueOf(productCreationDto.getProviderId()));
+                if (providerEntity == null) {
+                    throw new Exception("Provider not found with ID: " + productCreationDto.getProviderId());
+                }
+            }
+
             Product product = Product.builder()
-                    .provider(productCreationDto.getProvider())
+                    .provider(providerEntity == null ? productCreationDto.getProvider() : providerEntity.getName())// Keep for backward compatibility
+                    .providerEntity(providerEntity) // Use the entity relationship
                     .providerProductId(productCreationDto.getProviderProductId())
                     .name(productCreationDto.getName())
                     .description(productCreationDto.getDescription())
                     .productBeneficiaryType(productCreationDto.getProductBeneficiaryType())
                     .policyDuration(productCreationDto.getPolicyDuration())
                     .policyDurationType(productCreationDto.getPolicyDurationType())
+                    .premiumCalculationMethod(productCreationDto.getPremiumCalculationMethod())
+                    .requiresComplexCalculation(productCreationDto.getRequiresComplexCalculation())
                     .productTerms(new ArrayList<>())
                     .createdAt(Timestamp.valueOf(now))
                     .updatedAt(Timestamp.valueOf(now))
@@ -73,7 +97,23 @@ public class ProductServiceImpl implements ProductService{
                 }
             }
 
+            List<ProductProperty> productProperties = new ArrayList<>();
+
+            if(productCreationDto.getProductProperties() != null) {
+                for(ProductPropertyDto productPropertyDto : productCreationDto.getProductProperties()) {
+                    ProductProperty productProperty = ProductProperty.builder()
+                            .key(productPropertyDto.getKey())
+                            .value(productPropertyDto.getValue())
+                            .product(product)
+                            .createdAt(Timestamp.valueOf(now))
+                            .updatedAt(Timestamp.valueOf(now))
+                            .build();
+                    productProperties.add(productDao.createProductProperty(productProperty));
+                }
+            }
+
             product.setProductTerms(productTerms);
+            product.setProductProperties(productProperties);
             productDao.updateProduct(product);
 
             return productMapper.toProductDto(product);
@@ -217,19 +257,26 @@ public class ProductServiceImpl implements ProductService{
             LocalDateTime now = LocalDateTime.now();
 
             LoanContract loanContract = loanContractDao.getLoanContractById(productPolicyCreationDto.getLoanId());
+            ProductPolicy existingPolicy = productDao.getProductPolicyByLoanId(productPolicyCreationDto.getLoanId());
+
+            if(existingPolicy != null) {
+                throw new Exception("This loan is already insured");
+            }
+
+
             Customer customer = customerDao.getCustomerById(productPolicyCreationDto.getCustomerId());
+
+            if(customer == null) {
+                throw new Exception("Customer not found");
+            }
+
             Product product = productDao.getProductById(productPolicyCreationDto.getProductId());
 
-            Double loanAmount = Double.parseDouble(loanContract.getTotalDisbursed().toString());
-            Double premiumPercentage = Double.parseDouble(productPolicyCreationDto.getPremiumPercentage());
-            Double premiumValue = (premiumPercentage / 100) * loanAmount;
-
+            // Create initial policy with basic info
             ProductPolicy productPolicy = ProductPolicy.builder()
                     .product(product)
                     .customer(customer)
                     .loanAmount(String.valueOf(loanContract.getTotalDisbursed()))
-                    .premiumPercentage(productPolicyCreationDto.getPremiumPercentage())
-                    .premiumValue(String.valueOf(premiumValue))
                     .createdAt(Timestamp.valueOf(now))
                     .updatedAt(Timestamp.valueOf(now))
                     .policyStartDate(loanContract.getDisbursedAt().toLocalDateTime())
@@ -237,9 +284,34 @@ public class ProductServiceImpl implements ProductService{
                     .loanContract(loanContract)
                     .build();
 
-            productDao.createProductPolicy(productPolicy);
+            ProductPolicy savedPolicy = productDao.createProductPolicy(productPolicy);
 
-            return productMapper.toProductPolicyDto(productPolicy);
+            // Auto-calculate premium based on product calculation requirements
+            if (product.getRequiresComplexCalculation() != null && product.getRequiresComplexCalculation()) {
+                // Use complex calculation for providers like Hollard
+                PremiumCalculation calculation = premiumCalculationHelper.calculatePremium(savedPolicy);
+
+                // Update the saved policy with calculated values
+                savedPolicy.setPremiumValue(calculation.getTotalPremium());
+                savedPolicy.setPremiumPercentage(calculation.getPremiumRate());
+                productDao.updateProductPolicy(savedPolicy);
+
+                // Save the detailed calculation breakdown
+                productDao.createPremiumCalculation(calculation);
+
+                // Reload the policy to get the updated relationships including premiumCalculations
+                savedPolicy = productDao.getProductPolicyById(savedPolicy.getId());
+            } else {
+                // Use simple calculation for internal products
+                Double loanAmount = Double.parseDouble(loanContract.getTotalDisbursed().toString());
+                Double premiumPercentage = Double.parseDouble(productPolicyCreationDto.getPremiumPercentage());
+                Double premiumValue = (premiumPercentage / 100) * loanAmount;
+                savedPolicy.setPremiumPercentage(productPolicyCreationDto.getPremiumPercentage());
+                savedPolicy.setPremiumValue(String.valueOf(premiumValue));
+                productDao.updateProductPolicy(savedPolicy);
+            }
+
+            return productMapper.toProductPolicyDto(savedPolicy);
         } catch (Exception e) {
             throw new Exception("Failed: "+e);
         }
@@ -305,6 +377,172 @@ public class ProductServiceImpl implements ProductService{
             );
         } catch (Exception e) {
             throw new Exception("Failed: "+e);
+        }
+    }
+
+    @Transactional
+    @Override
+    public ProductPropertyDto createProductProperty(ProductPropertyDto productPropertyDto) {
+        LocalDateTime now = LocalDateTime.now();
+        Product product = productDao.getProductById(productPropertyDto.getProductId().longValue());
+        ProductProperty productProperty = ProductProperty.builder()
+                .key(productPropertyDto.getKey())
+                .value(productPropertyDto.getValue())
+                .valueType(productPropertyDto.getValueType())
+                .product(product)
+                .createdAt(Timestamp.valueOf(now))
+                .updatedAt(Timestamp.valueOf(now))
+                .build();
+        return productMapper.toProductPropertyDto(productDao.createProductProperty(productProperty));
+    }
+
+    @Transactional
+    @Override
+    public ProductPropertyDto updateProductProperty(ProductPropertyDto productPropertyDto) {
+        LocalDateTime now = LocalDateTime.now();
+        ProductProperty productProperty = productDao.getProductPropertyById(productPropertyDto.getId());
+        productProperty.setKey(productPropertyDto.getKey());
+        productProperty.setValue(productPropertyDto.getValue());
+        productProperty.setUpdatedAt(Timestamp.valueOf(now));
+        return productMapper.toProductPropertyDto(productDao.updateProductProperty(productProperty));
+    }
+
+    @Override
+    public ProductPropertyDto getProductPropertyById(Long id) {
+        return productMapper.toProductPropertyDto(productDao.getProductPropertyById(id));
+    }
+
+    @Override
+    public List<ProductPropertyDto> getProductProperties(Integer productId) {
+        return productDao.getProductProperties(productId).stream().map(productMapper::toProductPropertyDto).collect(Collectors.toList());
+    }
+
+    // Provider methods implementation
+    @Transactional
+    @Override
+    public ProviderDto createProvider(ProviderCreationDto providerCreationDto) throws Exception {
+        try {
+            LocalDateTime now = LocalDateTime.now();
+
+            Provider provider = Provider.builder()
+                    .name(providerCreationDto.getName())
+                    .code(providerCreationDto.getCode())
+                    .description(providerCreationDto.getDescription())
+                    .contactEmail(providerCreationDto.getContactEmail())
+                    .apiEndpoint(providerCreationDto.getApiEndpoint())
+                    .isActive(providerCreationDto.getIsActive() != null ? providerCreationDto.getIsActive() : true)
+                    .createdAt(Timestamp.valueOf(now))
+                    .updatedAt(Timestamp.valueOf(now))
+                    .build();
+
+            Provider savedProvider = productDao.createProvider(provider);
+            return providerMapper.toProviderDto(savedProvider);
+        } catch (Exception e) {
+            throw new Exception("Failed to create provider: " + e.getMessage());
+        }
+    }
+
+    @Transactional
+    @Override
+    public ProviderDto updateProvider(ProviderDto providerDto) throws Exception {
+        try {
+            Provider existingProvider = productDao.getProviderById(providerDto.getId().longValue());
+            if (existingProvider == null) {
+                throw new Exception("Provider not found");
+            }
+
+            LocalDateTime now = LocalDateTime.now();
+
+            existingProvider.setName(providerDto.getName());
+            existingProvider.setCode(providerDto.getCode());
+            existingProvider.setDescription(providerDto.getDescription());
+            existingProvider.setContactEmail(providerDto.getContactEmail());
+            existingProvider.setApiEndpoint(providerDto.getApiEndpoint());
+            existingProvider.setIsActive(providerDto.getIsActive());
+            existingProvider.setUpdatedAt(Timestamp.valueOf(now));
+
+            Provider updatedProvider = productDao.updateProvider(existingProvider);
+            return providerMapper.toProviderDto(updatedProvider);
+        } catch (Exception e) {
+            throw new Exception("Failed to update provider: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public ProviderDto getProviderById(Long id) throws Exception {
+        try {
+            Provider provider = productDao.getProviderById(id);
+            if (provider == null) {
+                throw new Exception("Provider not found");
+            }
+            return providerMapper.toProviderDto(provider);
+        } catch (Exception e) {
+            throw new Exception("Failed to get provider: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public ProviderDto getProviderByCode(String code) throws Exception {
+        try {
+            Provider provider = productDao.getProviderByCode(code);
+            if (provider == null) {
+                throw new Exception("Provider not found");
+            }
+            return providerMapper.toProviderDto(provider);
+        } catch (Exception e) {
+            throw new Exception("Failed to get provider by code: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public PaginationDto<ProviderDto> filterProviders(String name, String code, Boolean isActive, Integer page, Integer pageSize) throws Exception {
+        try {
+            var providersPage = productDao.filterProviders(name, code, isActive, page, pageSize);
+
+            List<ProviderDto> providerDtos = providersPage.getContent().stream()
+                    .map(providerMapper::toProviderDto)
+                    .toList();
+
+            return new PaginationDto<>(
+                    providerDtos,
+                    providersPage.getNumber(),
+                    providersPage.getSize(),
+                    providersPage.getTotalElements()
+            );
+        } catch (Exception e) {
+            throw new Exception("Failed to filter providers: " + e.getMessage());
+        }
+    }
+
+    // Premium calculation methods implementation
+    @Transactional
+    @Override
+    public PremiumCalculationDto recalculatePremiumForPolicy(Long policyId) throws Exception {
+        try {
+            ProductPolicy policy = productDao.getProductPolicyById(policyId);
+            if (policy == null) {
+                throw new Exception("Policy not found");
+            }
+
+            // Create new calculation (keeping history)
+            PremiumCalculation newCalculation = premiumCalculationHelper.calculatePremium(policy);
+            PremiumCalculation savedCalculation = productDao.createPremiumCalculation(newCalculation);
+
+            return premiumCalculationMapper.toPremiumCalculationDto(savedCalculation);
+        } catch (Exception e) {
+            throw new Exception("Failed to recalculate premium: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public List<PremiumCalculationDto> getPremiumCalculationsByPolicyId(Long policyId) throws Exception {
+        try {
+            List<PremiumCalculation> calculations = productDao.getPremiumCalculationsByPolicyId(policyId);
+            return calculations.stream()
+                    .map(premiumCalculationMapper::toPremiumCalculationDto)
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            throw new Exception("Failed to get premium calculations: " + e.getMessage());
         }
     }
 }

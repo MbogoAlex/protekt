@@ -23,6 +23,10 @@ public class Product {
 
     private String provider;
 
+    @ManyToOne
+    @JoinColumn(name = "provider_id")
+    private Provider providerEntity;
+
     @Column(name = "provider_product_id")
     private String providerProductId;
 
@@ -33,12 +37,23 @@ public class Product {
     @Column(name = "product_beneficiary_name")
     private String productBeneficiaryType; // FANAKA, CUSTOMER
 
+    @Column(name = "policy_duration")
     private Integer policyDuration;
 
+    @Column(name = "policy_duration_type")
     private String policyDurationType; // DAYS, WEEKS, MONTHS, YEARS
+
+    @Column(name = "premium_calculation_method")
+    private String premiumCalculationMethod;
+
+    @Column(name = "requires_complex_calculation")
+    private Boolean requiresComplexCalculation;
 
     @OneToMany(mappedBy = "product")
     private List<ProductTerm> productTerms;
+
+    @OneToMany(mappedBy = "product")
+    private List<ProductProperty> productProperties;
 
     @Column(name = "created_at")
     private Timestamp createdAt;

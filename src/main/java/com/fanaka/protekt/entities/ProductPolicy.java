@@ -8,6 +8,7 @@ import lombok.experimental.SuperBuilder;
 
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @AllArgsConstructor
@@ -28,6 +29,10 @@ public class ProductPolicy {
     @ManyToOne
     @JoinColumn(name = "customer_id")
     private Customer customer;
+
+    @ManyToOne
+    @JoinColumn(name = "staff_id")
+    private Member staffId;
 
     @Column(name = "loan_amount")
     private String loanAmount;
@@ -58,4 +63,7 @@ public class ProductPolicy {
     @OneToOne
     @JoinColumn(name = "loan_contract_id")
     private LoanContract loanContract;
+
+    @OneToMany(mappedBy = "productPolicy")
+    private List<PremiumCalculation> premiumCalculations;
 }

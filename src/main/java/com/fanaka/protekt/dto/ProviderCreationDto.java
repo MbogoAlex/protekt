@@ -7,24 +7,16 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
-import java.util.List;
-
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @SuperBuilder
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-public class ProductCreationDto {
-    private String provider;
-    private Integer providerId;
-    private String providerProductId;
+public class ProviderCreationDto {
     private String name;
+    private String code;
     private String description;
-    private String productBeneficiaryType;
-    private Integer policyDuration;
-    private String policyDurationType;
-    private String premiumCalculationMethod;
-    private Boolean requiresComplexCalculation;
-    private List<String> productTerms;
-    private List<ProductPropertyDto> productProperties;
+    private String contactEmail;
+    private String apiEndpoint;
+    private Boolean isActive;
 }

@@ -20,4 +20,20 @@ public interface ProductController {
     ResponseEntity<Object> updateProductPolicy(ProductPolicyUpdateDto productPolicyUpdateDto) throws Exception;
     ResponseEntity<Object> getProductPolicyById(Long id) throws Exception;
     ResponseEntity<Object> filterProductPolicies(Integer productId, Long loanId, Long customerId, String customerName, LocalDateTime createdAtStartDate, LocalDateTime createdAtEndDate, LocalDateTime policyStartDate, LocalDateTime policyEndDate, Integer page, Integer pageSize) throws Exception;
+
+    ResponseEntity<Object> createProductProperty(ProductPropertyDto productProperty);
+    ResponseEntity<Object> updateProductProperty(ProductPropertyDto productProperty);
+    ResponseEntity<Object> getProductPropertyById(Long id);
+    ResponseEntity<Object> getProductProperties(Integer productId);
+
+    // Provider methods
+    ResponseEntity<Object> createProvider(ProviderCreationDto providerCreationDto) throws Exception;
+    ResponseEntity<Object> updateProvider(ProviderDto providerDto) throws Exception;
+    ResponseEntity<Object> getProviderById(Long id) throws Exception;
+    ResponseEntity<Object> getProviderByCode(String code) throws Exception;
+    ResponseEntity<Object> filterProviders(String name, String code, Boolean isActive, Integer page, Integer pageSize) throws Exception;
+
+    // Premium calculation methods
+    ResponseEntity<Object> recalculatePremiumForPolicy(Long policyId) throws Exception;
+    ResponseEntity<Object> getPremiumCalculationsByPolicyId(Long policyId) throws Exception;
 }

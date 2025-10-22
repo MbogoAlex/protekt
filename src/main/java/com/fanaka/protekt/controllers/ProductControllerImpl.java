@@ -236,4 +236,151 @@ public class ProductControllerImpl implements ProductController{
             return buildResponse.error("Failed to retrieve product policies", errors, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+
+    @PostMapping("product-property")
+    @Override
+    public ResponseEntity<Object> createProductProperty(@RequestBody ProductPropertyDto productProperty) {
+        try {
+            return buildResponse.success(productService.createProductProperty(productProperty), "Product property created successfully", null, HttpStatus.CREATED);
+        } catch (Exception e) {
+            Map<String, Object> errors = new HashMap<>();
+            errors.put("general", e.getMessage());
+            return buildResponse.error("Failed to create product property", errors, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @PutMapping("product-property")
+    @Override
+    public ResponseEntity<Object> updateProductProperty(@RequestBody ProductPropertyDto productProperty) {
+        try {
+            return buildResponse.success(productService.updateProductProperty(productProperty), "Product property created successfully", null, HttpStatus.CREATED);
+        } catch (Exception e) {
+            Map<String, Object> errors = new HashMap<>();
+            errors.put("general", e.getMessage());
+            return buildResponse.error("Failed to retrieve product property", errors, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @GetMapping("product-property/{id}")
+    @Override
+    public ResponseEntity<Object> getProductPropertyById(@PathVariable("id") Long id) {
+        try {
+            return buildResponse.success(productService.getProductPropertyById(id), "Product property retrieved successfully", null, HttpStatus.CREATED);
+        } catch (Exception e) {
+            Map<String, Object> errors = new HashMap<>();
+            errors.put("general", e.getMessage());
+            return buildResponse.error("Failed to retrieve product property", errors, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @GetMapping("product-property/pid/{id}")
+    @Override
+    public ResponseEntity<Object> getProductProperties(@PathVariable("id") Integer productId) {
+        try {
+            return buildResponse.success(productService.getProductProperties(productId), "Product properties retrieved successfully", null, HttpStatus.CREATED);
+        } catch (Exception e) {
+            Map<String, Object> errors = new HashMap<>();
+            errors.put("general", e.getMessage());
+            return buildResponse.error("Failed to retrieve product properties", errors, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // Provider endpoints implementation
+    @PostMapping("/providers")
+    @Override
+    public ResponseEntity<Object> createProvider(@RequestBody ProviderCreationDto providerCreationDto) throws Exception {
+        try {
+            ProviderDto result = productService.createProvider(providerCreationDto);
+            return buildResponse.success(result, "Provider created successfully", null, HttpStatus.CREATED);
+        } catch (Exception e) {
+            Map<String, Object> errors = new HashMap<>();
+            errors.put("general", e.getMessage());
+            return buildResponse.error("Failed to create provider", errors, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @PutMapping("/providers")
+    @Override
+    public ResponseEntity<Object> updateProvider(@RequestBody ProviderDto providerDto) throws Exception {
+        try {
+            ProviderDto result = productService.updateProvider(providerDto);
+            return buildResponse.success(result, "Provider updated successfully", null, HttpStatus.OK);
+        } catch (Exception e) {
+            Map<String, Object> errors = new HashMap<>();
+            errors.put("general", e.getMessage());
+            return buildResponse.error("Failed to update provider", errors, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @GetMapping("/providers/{id}")
+    @Override
+    public ResponseEntity<Object> getProviderById(@PathVariable("id") Long id) throws Exception {
+        try {
+            ProviderDto result = productService.getProviderById(id);
+            return buildResponse.success(result, "Provider retrieved successfully", null, HttpStatus.OK);
+        } catch (Exception e) {
+            Map<String, Object> errors = new HashMap<>();
+            errors.put("general", e.getMessage());
+            return buildResponse.error("Failed to retrieve provider", errors, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @GetMapping("/providers/code/{code}")
+    @Override
+    public ResponseEntity<Object> getProviderByCode(@PathVariable("code") String code) throws Exception {
+        try {
+            ProviderDto result = productService.getProviderByCode(code);
+            return buildResponse.success(result, "Provider retrieved successfully", null, HttpStatus.OK);
+        } catch (Exception e) {
+            Map<String, Object> errors = new HashMap<>();
+            errors.put("general", e.getMessage());
+            return buildResponse.error("Failed to retrieve provider", errors, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @GetMapping("/providers")
+    @Override
+    public ResponseEntity<Object> filterProviders(
+            @RequestParam(value = "name", required = false) String name,
+            @RequestParam(value = "code", required = false) String code,
+            @RequestParam(value = "is_active", required = false) Boolean isActive,
+            @RequestParam(value = "page", required = false) Integer page,
+            @RequestParam(value = "page_size", required = false) Integer pageSize
+    ) throws Exception {
+        try {
+            PaginationDto<ProviderDto> result = productService.filterProviders(name, code, isActive, page, pageSize);
+            return buildResponse.success(result, "Providers retrieved successfully", null, HttpStatus.OK);
+        } catch (Exception e) {
+            Map<String, Object> errors = new HashMap<>();
+            errors.put("general", e.getMessage());
+            return buildResponse.error("Failed to filter providers", errors, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // Premium calculation endpoints implementation
+    @PostMapping("/policies/{policyId}/recalculate-premium")
+    @Override
+    public ResponseEntity<Object> recalculatePremiumForPolicy(@PathVariable("policyId") Long policyId) throws Exception {
+        try {
+            PremiumCalculationDto result = productService.recalculatePremiumForPolicy(policyId);
+            return buildResponse.success(result, "Premium recalculated successfully", null, HttpStatus.CREATED);
+        } catch (Exception e) {
+            Map<String, Object> errors = new HashMap<>();
+            errors.put("general", e.getMessage());
+            return buildResponse.error("Failed to recalculate premium", errors, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @GetMapping("/policies/{policyId}/premium-calculations")
+    @Override
+    public ResponseEntity<Object> getPremiumCalculationsByPolicyId(@PathVariable("policyId") Long policyId) throws Exception {
+        try {
+            var result = productService.getPremiumCalculationsByPolicyId(policyId);
+            return buildResponse.success(result, "Premium calculations retrieved successfully", null, HttpStatus.OK);
+        } catch (Exception e) {
+            Map<String, Object> errors = new HashMap<>();
+            errors.put("general", e.getMessage());
+            return buildResponse.error("Failed to retrieve premium calculations", errors, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
 }

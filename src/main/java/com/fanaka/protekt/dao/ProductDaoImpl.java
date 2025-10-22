@@ -1,13 +1,7 @@
 package com.fanaka.protekt.dao;
 
-import com.fanaka.protekt.entities.Product;
-import com.fanaka.protekt.entities.ProductPolicy;
-import com.fanaka.protekt.entities.ProductTerm;
-import com.fanaka.protekt.entities.Customer;
-import com.fanaka.protekt.entities.LoanContract;
-import com.fanaka.protekt.entities.Member;
+import com.fanaka.protekt.entities.*;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.NoResultException;
 import jakarta.persistence.TypedQuery;
 import jakarta.persistence.criteria.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -243,7 +237,23 @@ public class ProductDaoImpl implements ProductDao {
     @Override
     public ProductPolicy getProductPolicyById(Long id) {
         try {
-            return entityManager.find(ProductPolicy.class, id);
+            TypedQuery<ProductPolicy> query = entityManager.createQuery(
+                "SELECT p FROM ProductPolicy p LEFT JOIN FETCH p.premiumCalculations WHERE p.id = :id",
+                ProductPolicy.class
+            );
+            query.setParameter("id", id);
+            return query.getSingleResult();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    @Override
+    public ProductPolicy getProductPolicyByLoanId(Long loanId) {
+        try {
+           TypedQuery<ProductPolicy> query = entityManager.createQuery("from ProductPolicy where loanContract.application = :loanId", ProductPolicy.class);
+           query.setParameter("loanId", loanId);
+           return query.getSingleResult();
         } catch (Exception e) {
             return null;
         }
@@ -379,5 +389,176 @@ public class ProductDaoImpl implements ProductDao {
         
         Pageable pageable = PageRequest.of(pageNumber, size);
         return new PageImpl<>(productPolicies, pageable, totalCount);
+    }
+
+    @Override
+    public ProductProperty createProductProperty(ProductProperty productProperty) {
+        entityManager.persist(productProperty);
+        return productProperty;
+    }
+
+    @Override
+    public ProductProperty updateProductProperty(ProductProperty productProperty) {
+        entityManager.merge(productProperty);
+        return productProperty;
+    }
+
+    @Override
+    public ProductProperty getProductPropertyById(Long id) {
+        TypedQuery<ProductProperty> query = entityManager.createQuery("from ProductProperty where  id = :productPropertyId", ProductProperty.class);
+        query.setParameter("productPropertyId", id);
+
+        try {
+           return query.getSingleResult();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    @Override
+    public List<ProductProperty> getProductProperties(Integer productId) {
+        TypedQuery<ProductProperty> query =  entityManager.createQuery("from ProductProperty where product.id = :productId", ProductProperty.class);
+        query.setParameter("productId", productId);
+        return query.getResultList();
+    }
+
+    // Provider methods implementation
+    @Override
+    public Provider createProvider(Provider provider) {
+        entityManager.persist(provider);
+        entityManager.flush();
+        return provider;
+    }
+
+    @Override
+    public Provider updateProvider(Provider provider) {
+        return entityManager.merge(provider);
+    }
+
+    @Override
+    public Provider getProviderById(Long id) {
+        try {
+            TypedQuery<Provider> query = entityManager.createQuery("from Provider where id = :providerId", Provider.class);
+            query.setParameter("providerId", id);
+            return query.getSingleResult();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    @Override
+    public Provider getProviderByCode(String code) {
+        try {
+            TypedQuery<Provider> query = entityManager.createQuery("from Provider where code = :code", Provider.class);
+            query.setParameter("code", code);
+            return query.getSingleResult();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    @Override
+    public Page<Provider> filterProviders(String name, String code, Boolean isActive, Integer page, Integer pageSize) {
+        CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+
+        // Query for data
+        CriteriaQuery<Provider> query = cb.createQuery(Provider.class);
+        Root<Provider> root = query.from(Provider.class);
+
+        List<Predicate> predicates = new ArrayList<>();
+
+        // Add filters
+        if (name != null && !name.trim().isEmpty()) {
+            predicates.add(cb.like(cb.lower(root.get("name")), "%" + name.toLowerCase() + "%"));
+        }
+
+        if (code != null && !code.trim().isEmpty()) {
+            predicates.add(cb.like(cb.lower(root.get("code")), "%" + code.toLowerCase() + "%"));
+        }
+
+        if (isActive != null) {
+            predicates.add(cb.equal(root.get("isActive"), isActive));
+        }
+
+        if (!predicates.isEmpty()) {
+            query.where(cb.and(predicates.toArray(new Predicate[0])));
+        }
+
+        query.orderBy(cb.desc(root.get("createdAt")));
+
+        // Set pagination
+        int pageNumber = (page != null && page >= 0) ? page : 0;
+        int size = (pageSize != null && pageSize > 0) ? pageSize : 10;
+
+        TypedQuery<Provider> typedQuery = entityManager.createQuery(query);
+        typedQuery.setFirstResult(pageNumber * size);
+        typedQuery.setMaxResults(size);
+
+        List<Provider> providers = typedQuery.getResultList();
+
+        // Count query
+        CriteriaQuery<Long> countQuery = cb.createQuery(Long.class);
+        Root<Provider> countRoot = countQuery.from(Provider.class);
+        countQuery.select(cb.count(countRoot));
+
+        if (!predicates.isEmpty()) {
+            // Rebuild predicates for count query
+            List<Predicate> countPredicates = new ArrayList<>();
+
+            if (name != null && !name.trim().isEmpty()) {
+                countPredicates.add(cb.like(cb.lower(countRoot.get("name")), "%" + name.toLowerCase() + "%"));
+            }
+
+            if (code != null && !code.trim().isEmpty()) {
+                countPredicates.add(cb.like(cb.lower(countRoot.get("code")), "%" + code.toLowerCase() + "%"));
+            }
+
+            if (isActive != null) {
+                countPredicates.add(cb.equal(countRoot.get("isActive"), isActive));
+            }
+
+            countQuery.where(cb.and(countPredicates.toArray(new Predicate[0])));
+        }
+
+        Long totalCount = entityManager.createQuery(countQuery).getSingleResult();
+
+        Pageable pageable = PageRequest.of(pageNumber, size);
+        return new PageImpl<>(providers, pageable, totalCount);
+    }
+
+    // Premium calculation methods implementation
+    @Override
+    public PremiumCalculation createPremiumCalculation(PremiumCalculation premiumCalculation) {
+        entityManager.persist(premiumCalculation);
+        entityManager.flush();
+        return premiumCalculation;
+    }
+
+    @Override
+    public PremiumCalculation updatePremiumCalculation(PremiumCalculation premiumCalculation) {
+        return entityManager.merge(premiumCalculation);
+    }
+
+    @Override
+    public PremiumCalculation getPremiumCalculationById(Long id) {
+        try {
+            return entityManager.find(PremiumCalculation.class, id);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    @Override
+    public List<PremiumCalculation> getPremiumCalculationsByPolicyId(Long policyId) {
+        try {
+            TypedQuery<PremiumCalculation> query = entityManager.createQuery(
+                "from PremiumCalculation where productPolicy.id = :policyId order by createdAt desc",
+                PremiumCalculation.class
+            );
+            query.setParameter("policyId", policyId);
+            return query.getResultList();
+        } catch (Exception e) {
+            return new ArrayList<>();
+        }
     }
 }
