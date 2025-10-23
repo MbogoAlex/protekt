@@ -2,6 +2,7 @@ package com.fanaka.protekt.services;
 
 import com.fanaka.protekt.dao.CustomerDao;
 import com.fanaka.protekt.dao.LoanContractDao;
+import com.fanaka.protekt.dao.MemberDao;
 import com.fanaka.protekt.dao.ProductDao;
 import com.fanaka.protekt.dto.*;
 import com.fanaka.protekt.dto.mapper.ProductMapper;
@@ -23,6 +24,7 @@ public class ProductServiceImpl implements ProductService{
 
     private final ProductDao productDao;
     private final CustomerDao customerDao;
+    private final MemberDao memberDao;
     private final LoanContractDao loanContractDao;
     private final ProductMapper productMapper;
     private final ProviderMapper providerMapper;
@@ -33,6 +35,7 @@ public class ProductServiceImpl implements ProductService{
     public ProductServiceImpl(
             ProductDao productDao,
             CustomerDao customerDao,
+            MemberDao memberDao,
             LoanContractDao loanContractDao,
             ProductMapper productMapper,
             ProviderMapper providerMapper,
@@ -41,6 +44,7 @@ public class ProductServiceImpl implements ProductService{
     ) {
         this.productDao = productDao;
         this.customerDao = customerDao;
+        this.memberDao = memberDao;
         this.loanContractDao = loanContractDao;
         this.productMapper = productMapper;
         this.providerMapper = providerMapper;
@@ -258,6 +262,7 @@ public class ProductServiceImpl implements ProductService{
 
             LoanContract loanContract = loanContractDao.getLoanContractById(productPolicyCreationDto.getLoanId());
             ProductPolicy existingPolicy = productDao.getProductPolicyByLoanId(productPolicyCreationDto.getLoanId());
+            Member staff = memberDao.findMemberById(productPolicyCreationDto.getStaffId());
 
             if(existingPolicy != null) {
                 throw new Exception("This loan is already insured");
@@ -276,6 +281,7 @@ public class ProductServiceImpl implements ProductService{
             ProductPolicy productPolicy = ProductPolicy.builder()
                     .product(product)
                     .customer(customer)
+                    .staff(staff)
                     .loanAmount(String.valueOf(loanContract.getTotalDisbursed()))
                     .createdAt(Timestamp.valueOf(now))
                     .updatedAt(Timestamp.valueOf(now))

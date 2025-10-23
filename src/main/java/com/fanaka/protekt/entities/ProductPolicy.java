@@ -32,7 +32,7 @@ public class ProductPolicy {
 
     @ManyToOne
     @JoinColumn(name = "staff_id")
-    private Member staffId;
+    private Member staff;
 
     @Column(name = "loan_amount")
     private String loanAmount;

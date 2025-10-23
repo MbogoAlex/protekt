@@ -16,5 +16,6 @@ public class ProductPolicyCreationDto   {
     private Long productId;
     private Long customerId;
     private Long loanId;
+    private Long staffId;
     private String premiumPercentage;
 }

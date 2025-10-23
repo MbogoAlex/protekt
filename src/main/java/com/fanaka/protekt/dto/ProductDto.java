@@ -28,6 +28,7 @@ public class ProductDto {
     private String premiumCalculationMethod;
     private Boolean requiresComplexCalculation;
     private List<ProductTermDto> productTerms;
+    private List<ProductPropertyDto> productProperties;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

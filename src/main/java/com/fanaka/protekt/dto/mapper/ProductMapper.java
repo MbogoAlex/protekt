@@ -41,6 +41,7 @@ public class ProductMapper {
                 .premiumCalculationMethod(product.getPremiumCalculationMethod())
                 .requiresComplexCalculation(product.getRequiresComplexCalculation())
                 .productTerms(product.getProductTerms() != null ? product.getProductTerms().stream().map(this::toProductTermDto).toList() : null)
+                .productProperties(product.getProductProperties() != null ? product.getProductProperties().stream().map(this::toProductPropertyDto).toList() : null)
                 .createdAt(product.getCreatedAt() != null ? product.getCreatedAt().toLocalDateTime() : null)
                 .updatedAt(product.getUpdatedAt() != null ? product.getUpdatedAt().toLocalDateTime() : null)
                 .build();
