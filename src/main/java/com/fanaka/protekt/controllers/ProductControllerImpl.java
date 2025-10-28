@@ -383,4 +383,5 @@ public class ProductControllerImpl implements ProductController{
             return buildResponse.error("Failed to retrieve premium calculations", errors, HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+
 }

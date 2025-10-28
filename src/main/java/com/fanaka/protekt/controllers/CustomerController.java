@@ -19,4 +19,5 @@ public interface CustomerController {
             Long customerId,
             Map<String, MultipartFile> documentsWithTypes
     );
+    ResponseEntity<Object> getCustomerCheckDetails(String phone, String nrc);
 }

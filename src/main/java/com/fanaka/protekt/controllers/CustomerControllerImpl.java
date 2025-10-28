@@ -300,4 +300,21 @@ public class CustomerControllerImpl implements CustomerController {
             return buildResponse.error("Failed to upload KYC documents", errors, status);
         }
     }
+
+    @GetMapping("/customer-check")
+    @Override
+    public ResponseEntity<Object> getCustomerCheckDetails(
+            @RequestParam(name = "phone", required = false) String phone,
+            @RequestParam(name = "nrc", required = false) String nrc
+    ) {
+        try {
+            return buildResponse.success(customerService.getCustomerCheckDetails(phone, nrc), "Customer check details successfully", null, HttpStatus.OK);
+        } catch (Exception e) {
+            Map<String, Object> errors = new HashMap<>();
+            errors.put("general", e.getMessage());
+
+
+            return buildResponse.error("Customer details check error", errors, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
 }

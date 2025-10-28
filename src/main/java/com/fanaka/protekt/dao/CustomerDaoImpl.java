@@ -1,6 +1,9 @@
 package com.fanaka.protekt.dao;
 
+import com.fanaka.protekt.dto.CustomerCheckDto;
 import com.fanaka.protekt.entities.Customer;
+import com.fanaka.protekt.entities.LoanContract;
+import com.fanaka.protekt.entities.Member;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.TypedQuery;
 import jakarta.persistence.criteria.*;
@@ -184,5 +187,127 @@ public class CustomerDaoImpl implements CustomerDao {
         List<Customer> customers = typedQuery.getResultList();
         
         return new PageImpl<>(customers, PageRequest.of(pageNumber, size), totalElements);
+    }
+
+    @Override
+    public CustomerCheckDto getCustomerCheckDetails(String phone, String nrc) {
+        try {
+            CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+
+            // Initialize return values
+            Boolean isMember = false;
+            Boolean isProtektCustomer = false;
+            Boolean hasActiveLoan = false;
+            Boolean activeLoanIsInsured = false;
+            Long memberId = null;
+            Long customerId = null;
+
+            // 1. Check if person is a member with type = "CUSTOMER" by phone or NRC
+            if (phone != null || nrc != null) {
+                CriteriaQuery<Member> memberQuery = cb.createQuery(Member.class);
+                Root<Member> memberRoot = memberQuery.from(Member.class);
+
+                List<Predicate> memberPredicates = new ArrayList<>();
+
+                // Filter by type = "CUSTOMER"
+                memberPredicates.add(cb.equal(memberRoot.get("type"), "CUSTOMER"));
+
+                // Filter by phone or NRC
+                if (phone != null && nrc != null) {
+                    memberPredicates.add(cb.or(
+                        cb.equal(memberRoot.get("mobile"), phone),
+                        cb.equal(memberRoot.get("idNumber"), nrc)
+                    ));
+                } else if (phone != null) {
+                    memberPredicates.add(cb.equal(memberRoot.get("mobile"), phone));
+                } else if (nrc != null) {
+                    memberPredicates.add(cb.equal(memberRoot.get("idNumber"), nrc));
+                }
+
+                memberQuery.where(cb.and(memberPredicates.toArray(new Predicate[0])));
+
+                TypedQuery<Member> memberTypedQuery = entityManager.createQuery(memberQuery);
+                List<Member> members = memberTypedQuery.getResultList();
+
+                if (!members.isEmpty()) {
+                    isMember = true;
+                    Member member = members.get(0); // Take first match
+                    memberId = member.getId();
+
+                    // 2. Check if this member is in protekt_customers table
+                    CriteriaQuery<Customer> customerQuery = cb.createQuery(Customer.class);
+                    Root<Customer> customerRoot = customerQuery.from(Customer.class);
+
+                    customerQuery.where(cb.equal(customerRoot.get("member"), member));
+
+                    TypedQuery<Customer> customerTypedQuery = entityManager.createQuery(customerQuery);
+                    List<Customer> customers = customerTypedQuery.getResultList();
+
+                    if (!customers.isEmpty()) {
+                        isProtektCustomer = true;
+                        customerId = customers.get(0).getId();
+                    }
+
+                    // 3. Check for active loans using simple native query
+                    try {
+                        String activeLoanQuery = """
+                            SELECT COUNT(*)
+                            FROM lms_loan_contracts lc
+                            JOIN lms_loan_applications la ON lc.application = la.id
+                            WHERE lc.status = 'ACTIVE'
+                            AND (la.customer_id = ? OR la.member_id = ?)
+                        """;
+
+                        Long activeLoanCount = ((Number) entityManager.createNativeQuery(activeLoanQuery)
+                            .setParameter(1, customerId)
+                            .setParameter(2, memberId)
+                            .getSingleResult()).longValue();
+                        hasActiveLoan = activeLoanCount > 0;
+
+                        // 4. If there's an active loan, check if it has insurance policy
+                        if (hasActiveLoan) {
+                            String activeLoanWithPolicyQuery = """
+                                SELECT COUNT(*)
+                                FROM lms_loan_contracts lc
+                                JOIN lms_loan_applications la ON lc.application = la.id
+                                JOIN protekt_product_policies pp ON pp.loan_contract_id = lc.application
+                                WHERE lc.status = 'ACTIVE'
+                                AND (la.customer_id = ? OR la.member_id = ?)
+                            """;
+
+                            Long activeLoanWithPolicyCount = ((Number) entityManager.createNativeQuery(activeLoanWithPolicyQuery)
+                                .setParameter(1, customerId)
+                                .setParameter(2, memberId)
+                                .getSingleResult()).longValue();
+                            activeLoanIsInsured = activeLoanWithPolicyCount > 0;
+                        }
+                    } catch (Exception loanCheckException) {
+                        // If loan tables don't exist or query fails, set safe defaults
+                        hasActiveLoan = false;
+                        activeLoanIsInsured = false;
+                    }
+                }
+            }
+
+            // Ensure boolean values are never null
+            isMember = (isMember != null) ? isMember : false;
+            isProtektCustomer = (isProtektCustomer != null) ? isProtektCustomer : false;
+            hasActiveLoan = (hasActiveLoan != null) ? hasActiveLoan : false;
+            activeLoanIsInsured = (activeLoanIsInsured != null) ? activeLoanIsInsured : false;
+
+            return new CustomerCheckDto(
+                isProtektCustomer,
+                isMember,
+                hasActiveLoan,
+                activeLoanIsInsured,
+                customerId,
+                memberId
+            );
+
+        } catch (Exception e) {
+            // Log error and return safe defaults
+            e.printStackTrace();
+            return new CustomerCheckDto(false, false, false, false, null, null);
+        }
     }
 }

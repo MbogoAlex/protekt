@@ -284,4 +284,9 @@ public class CustomerServiceImpl implements CustomerService {
         // Return updated customer verification DTO
         return customerMapper.toCustomerVerificationDto(customerVerificationDao.getCustomerVerificationByCustomerId(customerId));
     }
+
+    @Override
+    public CustomerCheckDto getCustomerCheckDetails(String phone, String nrc) {
+        return customerDao.getCustomerCheckDetails(phone, nrc);
+    }
 }

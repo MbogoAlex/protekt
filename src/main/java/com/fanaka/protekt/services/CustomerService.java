@@ -16,4 +16,5 @@ public interface CustomerService {
     PaginationDto<CustomerVerificationDto> filterCustomerVerifications(String name, String nrc, String email, String gender, String verificationStatus, LocalDateTime createdAtStartDate, LocalDateTime createdAtEndDate, LocalDateTime statusChangedAtStartDate, LocalDateTime statusChangedAtEndDate, Integer page, Integer pageSize);
     
     CustomerVerificationDto uploadKycDocuments(Long customerId, MultipartFile[] files, String[] documentTypes) throws Exception;
+    CustomerCheckDto getCustomerCheckDetails(String phone, String nrc);
 }
