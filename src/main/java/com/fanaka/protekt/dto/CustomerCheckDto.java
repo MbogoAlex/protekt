@@ -13,7 +13,11 @@ import lombok.NoArgsConstructor;
 public class CustomerCheckDto {
     private Boolean isProtektCustomer;
     private Boolean isMember;
+    private String memberName;
+    private String memberNrc;
+    private String memberPhone;
     private Boolean hasActiveLoan;
+    private Long activeLoanId;
     private Boolean activeLoanIsInsured;
     private Long customerId;
     private Long memberId;

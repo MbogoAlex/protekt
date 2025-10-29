@@ -2,6 +2,7 @@ package com.fanaka.protekt.dto.mapper;
 
 import com.fanaka.protekt.dto.FileDto;
 import com.fanaka.protekt.entities.KycDocument;
+import com.fanaka.protekt.entities.ProtektClaimDocument;
 import com.fanaka.protekt.entities.ProtektFile;
 import com.fanaka.protekt.services.S3Service;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,7 +20,7 @@ public class FileMapper {
         this.s3Service = s3Service;
     }
 
-    FileDto toFileDto(ProtektFile protektFile, KycDocument kycDocument) throws Exception {
+    FileDto toFileDto(ProtektFile protektFile, KycDocument kycDocument, ProtektClaimDocument protektClaimDocument) throws Exception {
 
         FileDto file = FileDto.builder()
                 .id(protektFile.getId())
@@ -27,8 +28,13 @@ public class FileMapper {
                 .build();
 
         if(kycDocument != null) {
-            file.setKycDocumentType(kycDocument.getDocumentType());
-            file.setKycDocumentVerified(kycDocument.getVerified());
+            file.setDocumentType(kycDocument.getDocumentType());
+            file.setDocumentVerified(kycDocument.getVerified());
+        }
+
+        if(protektClaimDocument != null) {
+            file.setDocumentType(protektClaimDocument.getDocumentType());
+            file.setDocumentVerified(protektClaimDocument.getVerified());
         }
 
         return file;

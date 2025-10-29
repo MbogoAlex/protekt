@@ -33,14 +33,14 @@ public class CustomerMapper {
 
         if(!kycDocuments.isEmpty()) {
             for (KycDocument kycDocument : kycDocuments) {
-                documents.add(fileMapper.toFileDto(kycDocument.getProtektFile(), kycDocument));
+                documents.add(fileMapper.toFileDto(kycDocument.getProtektFile(), kycDocument, null));
             }
         }
 
         return CustomerDto.builder()
                 .id(customer.getId())
                 .memberId(customer.getMember() != null ? customer.getMember().getId() : null)
-                .avatar(customer.getAvatar() != null ? fileMapper.toFileDto(customer.getAvatar(), null) : null)
+                .avatar(customer.getAvatar() != null ? fileMapper.toFileDto(customer.getAvatar(), null, null) : null)
                 .firstName(customer.getMember() != null ? customer.getMember().getFirstName() : null)
                 .middleName(customer.getMember() != null ? customer.getMember().getMiddleName() : null)
                 .otherName(customer.getMember() != null ? customer.getMember().getOtherName() : null)
@@ -68,7 +68,7 @@ public class CustomerMapper {
 
         if(!kycDocuments.isEmpty()) {
             for (KycDocument kycDocument : kycDocuments) {
-                documents.add(fileMapper.toFileDto(kycDocument.getProtektFile(), kycDocument));
+                documents.add(fileMapper.toFileDto(kycDocument.getProtektFile(), kycDocument, null));
             }
         }
 

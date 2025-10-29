@@ -66,4 +66,6 @@ public class ProductPolicy {
 
     @OneToMany(mappedBy = "productPolicy")
     private List<PremiumCalculation> premiumCalculations;
+
+    private String status; // ACTIVE, INACTIVE
 }

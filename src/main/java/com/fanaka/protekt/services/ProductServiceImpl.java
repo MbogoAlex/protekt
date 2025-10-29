@@ -310,10 +310,19 @@ public class ProductServiceImpl implements ProductService{
             } else {
                 // Use simple calculation for internal products
                 Double loanAmount = Double.parseDouble(loanContract.getTotalDisbursed().toString());
-                Double premiumPercentage = Double.parseDouble(productPolicyCreationDto.getPremiumPercentage());
-                Double premiumValue = (premiumPercentage / 100) * loanAmount;
-                savedPolicy.setPremiumPercentage(productPolicyCreationDto.getPremiumPercentage());
-                savedPolicy.setPremiumValue(String.valueOf(premiumValue));
+
+                // Check if premiumPercentage is provided and valid
+                if (productPolicyCreationDto.getPremiumPercentage() != null &&
+                    !productPolicyCreationDto.getPremiumPercentage().trim().isEmpty()) {
+                    Double premiumPercentage = Double.parseDouble(productPolicyCreationDto.getPremiumPercentage().trim());
+                    Double premiumValue = (premiumPercentage / 100) * loanAmount;
+                    savedPolicy.setPremiumPercentage(productPolicyCreationDto.getPremiumPercentage());
+                    savedPolicy.setPremiumValue(String.valueOf(premiumValue));
+                } else {
+                    // Set default values or leave null if premium percentage is not provided
+                    savedPolicy.setPremiumPercentage(null);
+                    savedPolicy.setPremiumValue(null);
+                }
                 productDao.updateProductPolicy(savedPolicy);
             }
 
@@ -336,16 +345,24 @@ public class ProductServiceImpl implements ProductService{
             ProductPolicy productPolicy = productDao.getProductPolicyById(productPolicyUpdateDto.getProductPolicyId());
 
             Double loanAmount = Double.parseDouble(loanContract.getTotalDisbursed().toString());
-            Double premiumPercentage = Double.parseDouble(productPolicyUpdateDto.getPremiumPercentage());
-            Double premiumValue = (premiumPercentage / 100) * loanAmount;
 
             productPolicy.setLoanContract(loanContract);
             productPolicy.setCustomer(customer);
             productPolicy.setProduct(product);
-            productPolicy.setPremiumPercentage(productPolicyUpdateDto.getPremiumPercentage());
-            productPolicy.setPremiumValue(String.valueOf(premiumValue));
             productPolicy.setPolicyStartDate(loanContract.getDisbursedAt().toLocalDateTime());
             productPolicy.setPolicyEndDate(loanContract.getMaturityDate().toLocalDateTime());
+
+            // Check if premiumPercentage is provided and valid
+            if (productPolicyUpdateDto.getPremiumPercentage() != null &&
+                !productPolicyUpdateDto.getPremiumPercentage().trim().isEmpty()) {
+                Double premiumPercentage = Double.parseDouble(productPolicyUpdateDto.getPremiumPercentage().trim());
+                Double premiumValue = (premiumPercentage / 100) * loanAmount;
+                productPolicy.setPremiumPercentage(productPolicyUpdateDto.getPremiumPercentage());
+                productPolicy.setPremiumValue(String.valueOf(premiumValue));
+            } else {
+                // Leave existing values if premium percentage is not provided
+                // productPolicy.setPremiumPercentage() and setPremiumValue() not called
+            }
 
             productPolicy.setUpdatedAt(Timestamp.valueOf(now));
 

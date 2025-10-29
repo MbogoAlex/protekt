@@ -197,7 +197,11 @@ public class CustomerDaoImpl implements CustomerDao {
             // Initialize return values
             Boolean isMember = false;
             Boolean isProtektCustomer = false;
+            String memberName = null;
+            String memberNrc = null;
+            String memberPhone = null;
             Boolean hasActiveLoan = false;
+            Long activeLoanId = null;
             Boolean activeLoanIsInsured = false;
             Long memberId = null;
             Long customerId = null;
@@ -234,6 +238,29 @@ public class CustomerDaoImpl implements CustomerDao {
                     Member member = members.get(0); // Take first match
                     memberId = member.getId();
 
+                    // Extract member details
+                    memberPhone = member.getMobile();
+                    memberNrc = member.getIdNumber();
+
+                    // Build member name from available fields
+                    StringBuilder nameBuilder = new StringBuilder();
+                    if (member.getFirstName() != null && !member.getFirstName().trim().isEmpty()) {
+                        nameBuilder.append(member.getFirstName().trim());
+                    }
+                    if (member.getMiddleName() != null && !member.getMiddleName().trim().isEmpty()) {
+                        if (nameBuilder.length() > 0) nameBuilder.append(" ");
+                        nameBuilder.append(member.getMiddleName().trim());
+                    }
+                    if (member.getLastName() != null && !member.getLastName().trim().isEmpty()) {
+                        if (nameBuilder.length() > 0) nameBuilder.append(" ");
+                        nameBuilder.append(member.getLastName().trim());
+                    }
+                    if (member.getOtherName() != null && !member.getOtherName().trim().isEmpty()) {
+                        if (nameBuilder.length() > 0) nameBuilder.append(" ");
+                        nameBuilder.append(member.getOtherName().trim());
+                    }
+                    memberName = nameBuilder.length() > 0 ? nameBuilder.toString() : null;
+
                     // 2. Check if this member is in protekt_customers table
                     CriteriaQuery<Customer> customerQuery = cb.createQuery(Customer.class);
                     Root<Customer> customerRoot = customerQuery.from(Customer.class);
@@ -248,40 +275,69 @@ public class CustomerDaoImpl implements CustomerDao {
                         customerId = customers.get(0).getId();
                     }
 
-                    // 3. Check for active loans using simple native query
+                    // 3. Check for active loans using the same pattern as LoanContractDaoImpl
                     try {
-                        String activeLoanQuery = """
-                            SELECT COUNT(*)
-                            FROM lms_loan_contracts lc
-                            JOIN lms_loan_applications la ON lc.application = la.id
-                            WHERE lc.status = 'ACTIVE'
-                            AND (la.customer_id = ? OR la.member_id = ?)
-                        """;
-
-                        Long activeLoanCount = ((Number) entityManager.createNativeQuery(activeLoanQuery)
+                        // First get application IDs for this customer (exact same query as LoanContractDaoImpl)
+                        @SuppressWarnings("unchecked")
+                        List<Number> applicationIds = entityManager.createNativeQuery(
+                            "SELECT la.id FROM lms_loan_applications la " +
+                            "JOIN protekt_customers pc ON la.member = pc.member_id " +
+                            "WHERE pc.id = ?")
                             .setParameter(1, customerId)
-                            .setParameter(2, memberId)
-                            .getSingleResult()).longValue();
-                        hasActiveLoan = activeLoanCount > 0;
+                            .getResultList();
+
+                        System.err.println("Found " + applicationIds.size() + " applications for customer " + customerId + ": " + applicationIds);
+
+                        if (!applicationIds.isEmpty()) {
+                            // Now check for active loan contracts for these applications
+                            StringBuilder inClause = new StringBuilder();
+                            for (int i = 0; i < applicationIds.size(); i++) {
+                                if (i > 0) inClause.append(",");
+                                inClause.append("?");
+                            }
+
+                            String activeLoanQuery = "SELECT lc.application " +
+                                "FROM lms_loan_contracts lc " +
+                                "WHERE lc.status = 'ACTIVE' " +
+                                "AND lc.application IN (" + inClause + ") " +
+                                "LIMIT 1";
+
+                            jakarta.persistence.Query query = entityManager.createNativeQuery(activeLoanQuery);
+                            for (int i = 0; i < applicationIds.size(); i++) {
+                                query.setParameter(i + 1, applicationIds.get(i).longValue());
+                            }
+
+                            @SuppressWarnings("unchecked")
+                            List<Object> activeLoanResults = query.getResultList();
+
+                            System.err.println("Active loan query returned " + activeLoanResults.size() + " results");
+
+                            if (!activeLoanResults.isEmpty()) {
+                                hasActiveLoan = true;
+                                activeLoanId = ((Number) activeLoanResults.get(0)).longValue();
+                                System.err.println("Found active loan ID: " + activeLoanId);
+                            }
+                        }
 
                         // 4. If there's an active loan, check if it has insurance policy
                         if (hasActiveLoan) {
-                            String activeLoanWithPolicyQuery = """
-                                SELECT COUNT(*)
-                                FROM lms_loan_contracts lc
-                                JOIN lms_loan_applications la ON lc.application = la.id
-                                JOIN protekt_product_policies pp ON pp.loan_contract_id = lc.application
-                                WHERE lc.status = 'ACTIVE'
-                                AND (la.customer_id = ? OR la.member_id = ?)
-                            """;
+                            String activeLoanWithPolicyQuery = "SELECT COUNT(*) " +
+                                "FROM lms_loan_contracts lc " +
+                                "JOIN lms_loan_applications la ON lc.application = la.id " +
+                                "JOIN protekt_customers pc ON la.member = pc.member_id " +
+                                "JOIN protekt_product_policies pp ON pp.loan_contract_id = lc.application " +
+                                "WHERE lc.status = 'ACTIVE' " +
+                                "AND pc.id = ?";
 
                             Long activeLoanWithPolicyCount = ((Number) entityManager.createNativeQuery(activeLoanWithPolicyQuery)
                                 .setParameter(1, customerId)
-                                .setParameter(2, memberId)
                                 .getSingleResult()).longValue();
                             activeLoanIsInsured = activeLoanWithPolicyCount > 0;
                         }
                     } catch (Exception loanCheckException) {
+                        // Log the actual exception to understand what's failing
+                        System.err.println("Loan check exception for customer " + customerId + ": " + loanCheckException.getMessage());
+                        loanCheckException.printStackTrace();
                         // If loan tables don't exist or query fails, set safe defaults
                         hasActiveLoan = false;
                         activeLoanIsInsured = false;
@@ -298,7 +354,11 @@ public class CustomerDaoImpl implements CustomerDao {
             return new CustomerCheckDto(
                 isProtektCustomer,
                 isMember,
+                memberName,
+                memberNrc,
+                memberPhone,
                 hasActiveLoan,
+                activeLoanId,
                 activeLoanIsInsured,
                 customerId,
                 memberId
@@ -307,7 +367,7 @@ public class CustomerDaoImpl implements CustomerDao {
         } catch (Exception e) {
             // Log error and return safe defaults
             e.printStackTrace();
-            return new CustomerCheckDto(false, false, false, false, null, null);
+            return new CustomerCheckDto(false, false, null, null, null, false, null, false, null, null);
         }
     }
 }

@@ -60,13 +60,13 @@ public class ProductMapper {
 
     public ProductPolicyDto toProductPolicyDto(ProductPolicy productPolicy) {
 
-        String customerName = productPolicy.getCustomer().getMember().getFirstName() + " " +  productPolicy.getCustomer().getMember().getLastName();
+        String customerName = productPolicy.getCustomer() != null ? productPolicy.getCustomer().getMember().getFirstName() + " " +  productPolicy.getCustomer().getMember().getLastName() : null;
 
         return ProductPolicyDto.builder()
                 .policyId(productPolicy.getId())
-                .productName(productPolicy.getProduct().getName())
-                .productId(productPolicy.getProduct().getId())
-                .customerId(productPolicy.getCustomer().getId())
+                .productName(productPolicy.getProduct() != null ? productPolicy.getProduct().getName() : null)
+                .productId(productPolicy.getProduct() != null ? productPolicy.getProduct().getId() : null)
+                .customerId(productPolicy.getCustomer() != null ? productPolicy.getCustomer().getId() : null)
                 .customerName(customerName)
                 .loanId(productPolicy.getLoanContract().getApplication())
                 .loanPrincipal(String.valueOf(productPolicy.getLoanContract().getPrincipal()))

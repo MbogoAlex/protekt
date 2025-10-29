@@ -12,9 +12,10 @@ import lombok.experimental.SuperBuilder;
 @NoArgsConstructor
 @SuperBuilder
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-public class FileDto {
-    private Long id;
-    private String documentType;
-    private Boolean documentVerified;
-    private String url;
+public class ProtektClaimCreationDto {
+    private Long product_policy_id;
+    private Long staff_id;
+    private String incident;
+    private String date_of_incident;
+    private String time_of_incident;
 }
